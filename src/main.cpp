@@ -15,6 +15,8 @@ Basic selection via #define in the top of this code
 
 by hagre 
 05 2021
+
+Inspired by hagre who was inspired by others mentioned above. Added WiFiManager by tzapu to make connecting to AP's easier.
 */
 
 //version

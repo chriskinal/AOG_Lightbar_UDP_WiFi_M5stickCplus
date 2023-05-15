@@ -13,10 +13,6 @@
 #include <FastLED.h>
 #define USE_BT_SERIAL 1 //USB = 0  Bluetooth Serial =1
 
-#include <WiFiManager.h>
-#include <WiFi.h>
-#include <WiFiUDP.h>
-
 #if USE_BT_SERIAL
   #include "BluetoothSerial.h"
   BluetoothSerial SerialAOG;

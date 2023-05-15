@@ -11,15 +11,12 @@
 #include <Arduino.h>
 #include <M5StickCPlus.h>
 #include <FastLED.h>
-#define USE_BT_SERIAL 1 //USB = 0  Bluetooth Serial =1
+#define USE_WIFI 1 //USB = 0  WiFi =1
 
-#include <WiFiManager.h>
-#include <WiFi.h>
-#include <WiFiUDP.h>
-
-#if USE_BT_SERIAL
-  #include "BluetoothSerial.h"
-  BluetoothSerial SerialAOG;
+#if USE_WIFI
+  #include <WiFiManager.h>
+  #include <WiFi.h>
+  #include <WiFiUDP.h>
 #else
   #define SerialAOG Serial
 #endif
@@ -222,8 +219,32 @@ void lightbar(uint8_t distanceFromLine ){
 
     M5.begin(true ,true ,false);
     //set up communication
-    #if USE_BT_SERIAL
-      SerialAOG.begin("M5 LightBar"); //Bluetooth Serial
+    #if USE_WIFI
+        WiFiManager wm;
+
+        //set custom ip for portal
+        wm.setAPStaticIPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
+        
+        //set dark mode
+        wm.setDarkMode(true);
+
+        // reset settings - wipe stored credentials for testing
+        // these are stored by the esp library
+        // wm.resetSettings();
+
+        bool res;
+        // res = wm.autoConnect(); // auto generated AP name from chipid
+        // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
+        res = wm.autoConnect("M5LightbarAP","password"); // password protected ap
+
+        if(!res) {
+            Serial.println("Failed to connect");
+            // ESP.restart();
+          } 
+        else {
+            //if you get here you have connected to the WiFi    
+            Serial.println("connected...yeey :)");
+          }
     #else
       SerialAOG.begin(38400);
     #endif
@@ -231,7 +252,13 @@ void lightbar(uint8_t distanceFromLine ){
     M5.Lcd.setRotation(1);//1:PWR botton down 3:PWR button up
     FastLED.addLeds<WS2811,Neopixel_Pin,GRB>(leds, NUMPIXELS ).setCorrection(TypicalLEDStrip);
     M5.Lcd.fillScreen(TFT_BLACK);
+    
+    #if USE_WIFI
+      // add wifi send helloAgIO stuff
+    #else
     SerialAOG.write(helloAgIO,sizeof(helloAgIO));
+    #endif
+
     Serial.println("start");
     M5.Lcd.setTextSize(2);
     M5.Lcd.setTextColor(BLUE);
@@ -252,8 +279,8 @@ void lightbar(uint8_t distanceFromLine ){
     M5.Lcd.println("Setup complete");
     // End self-test routine
 
-    #if USE_BT_SERIAL
-      M5.Lcd.println("BT = M5 LightBar"); //Bluetooth Serial
+    #if USE_WIFI
+      M5.Lcd.println("WiFi = M5LightbarAP"); //WiFi
     #else
       M5.Lcd.println("Using USB");
     #endif
@@ -340,117 +367,134 @@ void lightbar(uint8_t distanceFromLine ){
       //send empty pgn to AgIO to show activity
       if (++helloCounter > 10)
       {
+        #if USE_WIFI
+          // send helloAgIO stuff
+        #else
         SerialAOG.write(helloAgIO,sizeof(helloAgIO));
         helloCounter = 0;
+        #endif
       }
     } //end of timed loop
   
     //This runs continuously, not timed //// Serial Receive Data/Settings /////////////////
   
     // SerialAOG Receive
-    //Do we have a match with 0x8081?    
-    if (SerialAOG.available() > 1 && !isHeaderFound && !isPGNFound) 
-    {
-      uint8_t temp = SerialAOG.read();
-      if (tempHeader == 0x80 && temp == 0x81) 
+    //Do we have a match with 0x8081?
+
+    #if USE_WIFI
+      // wifi check for data stuff
+    #else
+      if (SerialAOG.available() > 1 && !isHeaderFound && !isPGNFound) 
       {
-        isHeaderFound = true;
-        tempHeader = 0;        
+        uint8_t temp = SerialAOG.read();
+        if (tempHeader == 0x80 && temp == 0x81) 
+        {
+          isHeaderFound = true;
+          tempHeader = 0;        
+        }
+        else  
+        {
+          tempHeader = temp;     //save for next time
+          return;    
+        }
       }
-      else  
-      {
-        tempHeader = temp;     //save for next time
-        return;    
-      }
-    }
+    #endif
   
     //Find Source, PGN, and Length
-    if (SerialAOG.available() > 2 && isHeaderFound && !isPGNFound)
-    {
-      SerialAOG.read(); //The 7F or less
-      pgn = SerialAOG.read();
-      dataLength = SerialAOG.read();
-      isPGNFound = true;
-      idx=0;
-    } 
+    #if USE_WIFI
+      // wifi find source, pgn , lenght stuff
+    #else
+      if (SerialAOG.available() > 2 && isHeaderFound && !isPGNFound)
+      {
+        SerialAOG.read(); //The 7F or less
+        pgn = SerialAOG.read();
+        dataLength = SerialAOG.read();
+        isPGNFound = true;
+        idx=0;
+      } 
+    #endif
 
     //The data package
-    if (SerialAOG.available() > dataLength && isHeaderFound && isPGNFound)
-    {
-      if (pgn == 254) //FE AutoSteerData
+    #if USE_WIFI
+      // wifi data package stuff
+    #else
+      if (SerialAOG.available() > dataLength && isHeaderFound && isPGNFound)
       {
-        //bit 5,6
-        gpsSpeed = ((float)(SerialAOG.read()| SerialAOG.read() << 8 ))*0.1;
-        
-        //bit 7
-        guidanceStatus = SerialAOG.read();
-
-        //Bit 8,9    set point steer angle * 100 is sent
-        steerAngleSetPoint = ((float)(SerialAOG.read()| SerialAOG.read() << 8 ))*0.01; //high low bytes
-        
-        if ((bitRead(guidanceStatus,0) == 0) || (gpsSpeed < 0.1) || (steerSwitch == 1) )
-        { 
-          watchdogTimer = WATCHDOG_FORCE_VALUE; //turn off steering motor
-        }
-        else          //valid conditions to turn on autosteer
+        if (pgn == 254) //FE AutoSteerData
         {
-          watchdogTimer = 0;  //reset watchdog
-        }
-        
-        //Bit 10 Distance from line (cross track error)
-        distanceFromLine = SerialAOG.read();
-        
-        //Bit 11 section 1 to 8
-        relay = SerialAOG.read();
-        
-        //Bit 12 section 9 to 16
-        relayHi = SerialAOG.read();
-        
-        
-        //Bit 13 CRC
-        SerialAOG.read();
-        
-        //reset for next pgn sentence
-        isHeaderFound = isPGNFound = false;
-        pgn=dataLength=0;      
+          //bit 5,6
+          gpsSpeed = ((float)(SerialAOG.read()| SerialAOG.read() << 8 ))*0.1;
+          
+          //bit 7
+          guidanceStatus = SerialAOG.read();
 
-                   //----------------------------------------------------------------------------
-        //heading         
-        AOG[7] = (uint8_t)9999;        
-        AOG[8] = 9999 >> 8;
-        
-        //roll
-        AOG[9] = (uint8_t)8888;  
-        AOG[10] = 8888 >> 8;
-        AOG[11] = switchByte;
-        AOG[12] = (uint8_t)pwmDisplay;
-        
-        //add the checksum
-        int16_t CK_A = 0;
-        for (uint8_t i = 2; i < AOGSize - 1; i++)
-        {
-          CK_A = (CK_A + AOG[i]);
-        }
-        
-        AOG[AOGSize - 1] = CK_A;
-        SerialAOG.write(AOG, AOGSize);
-
-        // Stop sending the helloAgIO message
-        helloCounter = 0;
-        //--------------------------------------------------------------------------              
-      }
-              
-      
-    
-      //clean up strange pgns
-      else
-      {
+          //Bit 8,9    set point steer angle * 100 is sent
+          steerAngleSetPoint = ((float)(SerialAOG.read()| SerialAOG.read() << 8 ))*0.01; //high low bytes
+          
+          if ((bitRead(guidanceStatus,0) == 0) || (gpsSpeed < 0.1) || (steerSwitch == 1) )
+          { 
+            watchdogTimer = WATCHDOG_FORCE_VALUE; //turn off steering motor
+          }
+          else          //valid conditions to turn on autosteer
+          {
+            watchdogTimer = 0;  //reset watchdog
+          }
+          
+          //Bit 10 Distance from line (cross track error)
+          distanceFromLine = SerialAOG.read();
+          
+          //Bit 11 section 1 to 8
+          relay = SerialAOG.read();
+          
+          //Bit 12 section 9 to 16
+          relayHi = SerialAOG.read();
+          
+          
+          //Bit 13 CRC
+          SerialAOG.read();
+          
           //reset for next pgn sentence
           isHeaderFound = isPGNFound = false;
-          pgn=dataLength=0; 
-      }        
-  
-    } //end if (SerialAOG.available() > dataLength && isHeaderFound && isPGNFound)
+          pgn=dataLength=0;      
+
+                    //----------------------------------------------------------------------------
+          //heading         
+          AOG[7] = (uint8_t)9999;        
+          AOG[8] = 9999 >> 8;
+          
+          //roll
+          AOG[9] = (uint8_t)8888;  
+          AOG[10] = 8888 >> 8;
+          AOG[11] = switchByte;
+          AOG[12] = (uint8_t)pwmDisplay;
+          
+          //add the checksum
+          int16_t CK_A = 0;
+          for (uint8_t i = 2; i < AOGSize - 1; i++)
+          {
+            CK_A = (CK_A + AOG[i]);
+          }
+          
+          AOG[AOGSize - 1] = CK_A;
+          SerialAOG.write(AOG, AOGSize);
+
+          // Stop sending the helloAgIO message
+          helloCounter = 0;
+          //--------------------------------------------------------------------------              
+        }
+                
+        
+      
+        //clean up strange pgns
+        else
+        {
+            //reset for next pgn sentence
+            isHeaderFound = isPGNFound = false;
+            pgn=dataLength=0; 
+        }        
+    
+      } //end if (SerialAOG.available() > dataLength && isHeaderFound && isPGNFound)
+    #endif
 
     #if NUMPIXELS >0
       if (distanceFromLine != prevDistFromLine)  // only update the lightbar if it has changed

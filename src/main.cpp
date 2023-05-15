@@ -342,6 +342,8 @@ void loop() {
       }
       M5.Lcd.setCursor(16, 15);
       M5.Lcd.printf("%4d",cross_track_error*cmPerDistInt);
+      //M5.Lcd.setCursor(17,15);
+      M5.Lcd.print(" cm");
       M5.Lcd.setCursor(0, 110);
       M5.Lcd.setTextSize(2);
       M5.Lcd.println("Bat Cap " + String(getBatCapacity()) + "%");

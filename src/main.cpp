@@ -121,7 +121,7 @@ void setup() {
   // put your setup code here, to run once:
 
   M5.begin(true ,true ,false);
-  M5.Lcd.setRotation(1);//1:PWR botton down 3:PWR button up
+  M5.Lcd.setRotation(3);//1:PWR botton down 3:PWR button up
   M5.Lcd.fillScreen(TFT_BLACK);
   M5.Lcd.setTextSize(2);
   M5.Lcd.setTextColor(BLUE);

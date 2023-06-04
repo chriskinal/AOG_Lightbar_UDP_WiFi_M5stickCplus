@@ -39,12 +39,12 @@ Inspired by hagre who was inspired by others mentioned above. Added WiFiManager 
 #define cmPerLightbarPixel  16          // Must be a multiple of cmPerDistInt
 #define cmPerDistInt  2                // The number of centimeters represented by a change in 1 of the AOG cross track error byte
 #define LED_UPDATE_TIME 1000  //ms
-#define LED_BRIGHTNESS 125    //0-255
+#define LED_BRIGHTNESS 128    //0-255
 #ifdef  LED_BRIGHTNESS_CONTROL_ENABLED
   // #define ANALOG_PIN 37 // GPIO 34 (Analog ADC1_CH6) for non-M5 StickC Plus
-  #define LED_BRIGHTNESS_STEP 21 // Must be equal to or greater than MIN_LED_BRIGHTNESS + 1
+  #define LED_BRIGHTNESS_STEP 25 // Must be equal to or greater than MIN_LED_BRIGHTNESS + 1
   #define MIN_LED_BRIGHTNESS 20 // 0-255
-  #define MAX_LED_BRIGHTNESS 2 // 0-255
+  #define MAX_LED_BRIGHTNESS 255 // 0-255
 #endif
 #define LED_TYPE WS2812B
 #define LED_COLOR_SETTING GRB

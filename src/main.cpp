@@ -44,7 +44,7 @@ Inspired by hagre who was inspired by others mentioned above. Added WiFiManager 
   // #define ANALOG_PIN 37 // GPIO 34 (Analog ADC1_CH6) for non-M5 StickC Plus
   #define LED_BRIGHTNESS_STEP 21 // Must be equal to or greater than MIN_LED_BRIGHTNESS + 1
   #define MIN_LED_BRIGHTNESS 20 // 0-255
-  #define MAX_LED_BRIGHTNESS 255 // 0-255
+  #define MAX_LED_BRIGHTNESS 2 // 0-255
 #endif
 #define LED_TYPE WS2812B
 #define LED_COLOR_SETTING GRB

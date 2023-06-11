@@ -37,7 +37,7 @@ Inspired by hagre who was inspired by others mentioned above. Added WiFiManager 
 #define NUMPIXELS   35                 // Odd number dont use =0 
 #define Neopixel_Pin 32                //GPIO16 Set this to the pin number you are using for the Neopixel strip controll line
 #define cmPerLightbarPixel  16          // Must be a multiple of cmPerDistInt
-#define cmPerDistInt  2                // The number of centimeters represented by a change in 1 of the AOG cross track error byte
+#define cmPerDistInt  4                // The number of centimeters represented by a change in 1 of the AOG cross track error byte
 #define LED_UPDATE_TIME 1000  //ms
 #define LED_BRIGHTNESS 128    //0-255
 #ifdef  LED_BRIGHTNESS_CONTROL_ENABLED
